@@ -10,8 +10,8 @@ class Column:
         self.PTNUM = ptnum
         self.ONDEF = ondef
         self.ONUPD = onupd
-        self.CHEK  = ck
-        self.FORE  = fk
+        self.CK    = ck
+        self.FK    = fk
         self.ATTR  = Attrd.DEFAULT
 
         if type(btype) == bool:

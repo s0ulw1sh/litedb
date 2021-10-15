@@ -1,4 +1,4 @@
-from enum import Flag, auto
+from enum import auto
 from .expr import Expr
 
 class Cnd(Expr):

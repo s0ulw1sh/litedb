@@ -5,5 +5,6 @@ from .table import Table
 from .cond import Cnd
 from .val import Val
 from .idx import Idx
-from .checker import Ck
+from .ck import Ck
+from .fk import Fk
 from .funcs import Fn

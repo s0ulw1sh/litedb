@@ -1,7 +1,6 @@
-from .columns import Column
-from .idx import Idx
+from .column import LdbCol
 
-class Table:
+class LdbTable:
 
     def __init__(self):
         self.TABLE_NAME   = ''
@@ -20,7 +19,7 @@ class Table:
             name = name.removeprefix('table').removesuffix('table')
             self.TABLE_NAME = name
 
-    def ToSQL(self):
+    def ToSQL(self, engine_type : LdbEngine):
 
         items = []
         fks   = []
@@ -31,18 +30,16 @@ class Table:
             name = name.lower()
             if not callable(attr) and not name.startswith('__'):
                 if type(attr) == Column:
-                    items.append(attr.ToSQL(name))
-
-                    if attr.FK is not None: fks.append(attr.FK.ToSQL(self.TABLE_NAME, name))
-                    if attr.CK is not None: fks.append(attr.CK.ToSQL(self.TABLE_NAME, name))
+                    items.append(attr.ToSQL(engine_type, self.TABLE_NAME, name))
 
         engine = ''
 
         if self.TABLE_ENGINE != '':
             engine = ' ENGINE = ' + self.TABLE_ENGINE
 
-        items += fks + cks
-        
         out = 'CREATE TABLE `%s` (%s)%s' % (self.TABLE_NAME, ','.join(items), engine)
 
         return out.strip()
+
+    def ToDropSQL(self):
+        return 'DROP TABLE `%s`' % self.TABLE_NAME

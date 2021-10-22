@@ -1,21 +1,21 @@
-from litedb import Attrd
+from litedb import LdbAttr, LdbEngine
 import unittest
 
 class AttrdTest(unittest.TestCase):
 
     def test_not_null(self):
-        attr  = Attrd.DEFAULT
-        attr |= Attrd.NOTNULL
+        attr  = LdbAttr.DEFAULT
+        attr |= LdbAttr.NOTNULL
 
-        self.assertEqual(str(attr), 'NOT NULL')
+        self.assertEqual(attr.ToSQL(LdbEngine.MYSQL), 'NOT NULL')
 
     def test_not_null_ai(self):
-        attr  = Attrd.DEFAULT
+        attr  = LdbAttr.DEFAULT
         
-        attr |= Attrd.NOTNULL
-        attr |= Attrd.AI
+        attr |= LdbAttr.NOTNULL
+        attr |= LdbAttr.AI
 
-        self.assertEqual(str(attr), 'NOT NULL AUTO_INCREMENT')
+        self.assertEqual(attr.ToSQL(LdbEngine.MYSQL), 'NOT NULL AUTO_INCREMENT')
 
 if __name__ == '__main__':
     unittest.main()

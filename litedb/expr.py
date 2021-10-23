@@ -110,6 +110,17 @@ class LdbExpr:
                 }[self.T](engine_type, self.A, self.B, self.C)
 
         @classmethod
+        def Cnd(cls, op, expr_a : ILdbExpr, expr_b : ILdbExpr) -> ILdbExpr:
+            if op == '=':    return cls.Eq(expr_a, expr_b)
+            if op == '!=':   return cls.Ne(expr_a, expr_b)
+            if op == '>':    return cls.Gt(expr_a, expr_b)
+            if op == '<':    return cls.Lt(expr_a, expr_b)
+            if op == '>=':   return cls.Ge(expr_a, expr_b)
+            if op == '<=':   return cls.Le(expr_a, expr_b)
+            if op == 'IN':   return cls.In(expr_a, expr_b)
+            if op == 'LIKE': return cls.Like(expr_a, expr_b)
+
+        @classmethod
         def If(cls, expr_a : ILdbExpr, expr_b : ILdbExpr, expr_c : ILdbExpr = None) -> ILdbExpr:
             return LdbExpr.Cnd(cls.IF, expr_a, expr_b, expr_c)
 
@@ -181,7 +192,10 @@ class LdbExpr:
            
             elif self.T == LdbExpr.Val.FLD:
 
-                return '%s.%s' % (self.A, self.B)
+                if self.B is None:
+                    return '%s' % self.A
+                else:
+                    return '%s.%s' % (self.A, self.B)
 
             elif self.T == LdbExpr.Val.NAME:
 
@@ -214,8 +228,8 @@ class LdbExpr:
             return LdbExpr.Val(cls.FLD, 'OLD', name)
 
         @classmethod
-        def Fld(cls, table : str, name : str) -> ILdbExpr:
-            return LdbExpr.Val(cls.FLD, table, name)
+        def Fld(cls, table_name : str, name = None) -> ILdbExpr:
+            return LdbExpr.Val(cls.FLD, table_name, name)
 
         @classmethod
         def Set(cls, *items) -> ILdbExpr:

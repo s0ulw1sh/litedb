@@ -34,14 +34,16 @@ class LDbMySQL(LDb):
     def __init__(self, host:str, port:int, database:str, user:str, pwd:str):
         from mysql.connector import pooling
 
+        cfg = {
+                    'host'     : host,
+                    'port'     : port,
+                    'database' : database,
+                    'user'     : user,
+                    'password' : pwd,
+                }
+
         self.NAME    = ''.join(random.choice(string.ascii_uppercase) for _ in range(6))
-        self.POOL    = pooling.MySQLConnectionPool(pool_name = self.NAME, pool_size = pool_size, {
-                                                        'host'     : host,
-                                                        'port'     : port,
-                                                        'database' : database,
-                                                        'user'     : user,
-                                                        'password' : pwd
-                                                    })
+        self.POOL    = pooling.MySQLConnectionPool(self.NAME, 5, True, **cfg)
 
     def CreateTable(self, table : LdbTable):
         conn = self.POOL.get_connection()

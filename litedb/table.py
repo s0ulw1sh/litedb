@@ -1,6 +1,8 @@
 from .column import LdbCol
+from .types import LdbEngine
+from .expr import ILdbExprDrop
 
-class LdbTable:
+class LdbTable(ILdbExprDrop):
 
     def __init__(self):
         self.TABLE_NAME   = ''
@@ -29,7 +31,7 @@ class LdbTable:
             attr = getattr(self, name)
             name = name.lower()
             if not callable(attr) and not name.startswith('__'):
-                if type(attr) == Column:
+                if type(attr) == LdbCol:
                     items.append(attr.ToSQL(engine_type, self.TABLE_NAME, name))
 
         engine = ''
@@ -41,5 +43,5 @@ class LdbTable:
 
         return out.strip()
 
-    def ToDropSQL(self):
+    def ToDropSQL(self, engine_type : LdbEngine):
         return 'DROP TABLE `%s`' % self.TABLE_NAME

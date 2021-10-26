@@ -7,6 +7,16 @@ class ILdbExpr(metaclass=ABCMeta):
     def ToSQL(self, engine_type : LdbEngine) -> str:
         pass
 
+class ILdbExprDrop(metaclass=ABCMeta):
+
+    @abstractmethod
+    def ToSQL(self, engine_type : LdbEngine) -> str:
+        pass
+
+    @abstractmethod
+    def ToDropSQL(self, engine_type : LdbEngine) -> str:
+        pass
+
 class ILdbExprOpt(metaclass=ABCMeta):
 
     @abstractmethod
@@ -29,7 +39,7 @@ class LdbExpr:
         UUID      = 7
 
         def __init__(self, fnt : int, arg_a : ILdbExpr = None, arg_b : ILdbExpr = None):
-            self.T = fnid
+            self.T = fnt
             self.A = arg_a
             self.B = arg_b
 
@@ -48,11 +58,11 @@ class LdbExpr:
             return LdbExpr.Fn(cls.PASSWORD, expr)
 
         @classmethod
-        def MD5(cls, expr : ILdbExpr) -> ILdbExpr:
+        def Md5(cls, expr : ILdbExpr) -> ILdbExpr:
             return LdbExpr.Fn(cls.MD5, expr)
 
         @classmethod
-        def CRC(cls, expr : ILdbExpr) -> ILdbExpr:
+        def Crc(cls, expr : ILdbExpr) -> ILdbExpr:
             return LdbExpr.Fn(cls.CRC, expr)
 
         @classmethod
@@ -64,7 +74,7 @@ class LdbExpr:
             return LdbExpr.Fn(cls.NOW)
 
         @classmethod
-        def UUID(cls) -> ILdbExpr:
+        def Uuid(cls) -> ILdbExpr:
             return LdbExpr.Fn(cls.UUID)
 
     class Cnd(ILdbExpr):
@@ -288,7 +298,7 @@ class LdbExpr:
 
         def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
 
-            items = ['ALTER TABLE `{0}` ADD CONSTRAINT `ck_{0}_{1}` CHECK'.foramt(table, col)
+            items = ['ALTER TABLE `{0}` ADD CONSTRAINT `ck_{0}_{1}` CHECK'.foramt(table, col)]
 
             if self.T == LdbExpr.Ck.GELE:
                 items.append('(`{0}` >= {1} AND `{0}` <= {2})'.format(col, self.A, self.B))
@@ -342,7 +352,7 @@ class LdbExpr:
             for a in self.A:
                 if type(a) == 'str':
                     items.append(a)
-                elif:
+                else:
                     items.append(a.ToSQL(engine_type))
 
             if self.T == LdbExpr.Idx.INDX:
@@ -358,8 +368,15 @@ class LdbExpr:
 
         @classmethod
         def Uniq(cls, *parm):
-            return Idx(cls.UNIQ, parm)
+            return LdbExpr.Idx(cls.UNIQ, parm)
 
         @classmethod
         def Indx(cls, *parm):
-            return Idx(cls.INDX, parm)
+            return LdbExpr.Idx(cls.INDX, parm)
+
+class Val(LdbExpr.Val): pass
+class Fn(LdbExpr.Fn): pass
+class Cnd(LdbExpr.Cnd): pass
+class Idx(LdbExpr.Idx): pass
+class Ck(LdbExpr.Ck): pass
+class Fk(LdbExpr.Fk): pass

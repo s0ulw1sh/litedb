@@ -1,4 +1,4 @@
-from .types import LdbType, LdbAttr
+from .types import LdbType, LdbAttr, LdbEngine
 from .expr import ILdbExpr, ILdbExprOpt
 
 class LdbCol(ILdbExprOpt):
@@ -42,7 +42,7 @@ class LdbCol(ILdbExprOpt):
 
         items.append(typesz)
 
-        if self.ATTR != Attrd.DEFAULT:
+        if self.ATTR != LdbAttr.DEFAULT:
             items.append(self.ATTR.ToSQL(engine_type))
 
         if self.ONDEF is not None:
@@ -52,6 +52,9 @@ class LdbCol(ILdbExprOpt):
             items.append('ON UPDATE ' + self.ONUPD.ToSQL(engine_type))
 
         return ' '.join(items)
+
+    def ToDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
+        return 'ALTER TABLE `%s` DROP `%s`' % (table, col)
 
     @classmethod
     def DateTime(cls, sz:int=0, n:int=0, nn:bool=False, ai:bool=False, pk:bool=False, un:bool=True, ondef:ILdbExpr=None, onupd:ILdbExpr=None, ck:ILdbExpr=None, fk:ILdbExpr=None):

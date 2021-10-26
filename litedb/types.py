@@ -1,5 +1,4 @@
 from enum import Enum, unique, Flag, auto
-from .types import LdbEngine
 
 @unique
 class LdbEngine(Enum):
@@ -27,35 +26,35 @@ class LdbType(Enum):
 
     def ToSQL(self, engine_type : LdbEngine):
         return {
-            Typed.STRING  : 'VARCHAR',
-            Typed.TEXT    : 'TEXT',
-            Typed.INT     : 'INT',
-            Typed.FLOAT   : 'FLOAT',
-            Typed.DECIMAL : 'DECIMAL',
-            Typed.BLOB    : 'BLOB',
-            Typed.DATETIME: 'DATETIME',
-            Typed.DATE    : 'DATE',
-            Typed.TIME    : 'TIME',
-            Typed.SET     : 'SET',
-            Typed.JSON    : 'JSON',
+            LdbType.STRING  : 'VARCHAR',
+            LdbType.TEXT    : 'TEXT',
+            LdbType.INT     : 'INT',
+            LdbType.FLOAT   : 'FLOAT',
+            LdbType.DECIMAL : 'DECIMAL',
+            LdbType.BLOB    : 'BLOB',
+            LdbType.DATETIME: 'DATETIME',
+            LdbType.DATE    : 'DATE',
+            LdbType.TIME    : 'TIME',
+            LdbType.SET     : 'SET',
+            LdbType.JSON    : 'JSON',
         }[self]
 
     @classmethod
     def FromType(cls, t):
 
         if type(t) == type:
-            if t == str:     return Typed.STRING
-            if t == int:     return Typed.INT
-            if t == complex: return Typed.DECIMAL
-            if t == float:   return Typed.FLOAT
-            if t == bool:    return Typed.INT
-            if t == bytes:   return Typed.BLOB
-            if t == set:     return Typed.SET
+            if t == str:     return LdbType.STRING
+            if t == int:     return LdbType.INT
+            if t == complex: return LdbType.DECIMAL
+            if t == float:   return LdbType.FLOAT
+            if t == bool:    return LdbType.INT
+            if t == bytes:   return LdbType.BLOB
+            if t == set:     return LdbType.SET
         else:
-            if t in Typed.__members__:
+            if t in LdbType.__members__:
                 return t
 
-        return Typed.NONE
+        return LdbType.NONE
 
 class LdbAttr(Flag):
     DEFAULT = 0
@@ -67,9 +66,9 @@ class LdbAttr(Flag):
     def ToSQL(self, engine_type : LdbEngine) -> str:
         items = []
 
-        if attr & LdbAttr.UNSIGN:  items.append('UNSIGNED')
-        if attr & LdbAttr.NOTNULL: items.append('NOT NULL')
-        if attr & LdbAttr.AI:      items.append('AUTO_INCREMENT')
-        if attr & LdbAttr.PK:      items.append('PRIMARY KEY')
+        if self & LdbAttr.UNSIGN:  items.append('UNSIGNED')
+        if self & LdbAttr.NOTNULL: items.append('NOT NULL')
+        if self & LdbAttr.AI:      items.append('AUTO_INCREMENT')
+        if self & LdbAttr.PK:      items.append('PRIMARY KEY')
 
         return ' '.join(items)

@@ -1,5 +1,7 @@
 from .expr import ILdbExpr
-from .expr.LdbExpr import Cnd, Val
+#from .expr.LdbExpr  import Cnd, Val
+
+from .expr import LdbExpr
 
 class LdbQuery:
 
@@ -19,7 +21,7 @@ class LdbQuery:
 
         tables : list
 
-        def append(self, t:LdbQuery.Table):
+        def append(self, t ):
             self.tables.append(t)
 
         def appendFields(self, ind:str, flds:list):
@@ -51,7 +53,7 @@ class LdbQuery:
 
     class Select(ILdbExpr):
 
-        tables : LdbQuery.Tables
+        tables : None
         conds  : list
 
         def __init__(self, *tables):
@@ -68,7 +70,7 @@ class LdbQuery:
             else:
                 conds.append(Cnd.If(a))
 
-        def ToSQL(self, engine_type : LdbEngine) -> str:
+        def ToSQL(self, engine_type) -> str:
             pass
 
     @classmethod

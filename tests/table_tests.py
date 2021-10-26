@@ -1,26 +1,26 @@
-from litedb import Table, Column, Ck, Fk, Idx
+from litedb import LdbCol, LdbTable, LdbEngine, Idx, Fk, Ck, Val
 import unittest
 
-class MyTable(Table):
+class MyTable(LdbTable):
 
     __table_name__ = 'test'
     __engine__     = 'MEMORY'
 
-    id   = Column(int, ai=True, pk=True)
-    name = Column(str, 64, nn=True)
+    id   = LdbCol(int, ai=True, pk=True)
+    name = LdbCol(str, 64, nn=True)
 
-class UsersTable(Table):
+class UsersTable(LdbTable):
 
     __engine__ = 'MEMORY'
 
-    id   = Column(int, ai=True, pk=True)
-    name = Column(str, 64, nn=True)
-    role = Column(int, fk=Fk('roles.id', onupd=Fk.CASCADE))
-    mail = Column(str, 64, nn=True, ck=Ck.Mail())
+    id   = LdbCol(int, ai=True, pk=True)
+    name = LdbCol(str, 64, nn=True)
+    role = LdbCol(int, fk=Fk('roles.id', onupd=Fk.CASCADE))
+    mail = LdbCol(str, 64, nn=True, ck=Ck.Mail())
 
     uniqmail = Idx.Uniq('mail')
 
-    index = Idx.Indx(Idx.NameSz('name', 10), 'role')
+    index = Idx.Indx(Val.Name('name', 10), 'role')
 
 class TableTest(unittest.TestCase):
 
@@ -37,8 +37,8 @@ class TableTest(unittest.TestCase):
     def test_table_sql(self):
         table = UsersTable()
 
-        print(table.ToSQL())
-
+        self.assertEqual(table.ToSQL(LdbEngine.MYSQL), 'CREATE TABLE `users` (`id` INT AUTO_INCREMENT PRIMARY KEY,`mail` VARCHAR(64) NOT NULL,`name` VARCHAR(64) NOT NULL,`role` INT) ENGINE = MEMORY')
+        self.assertEqual(table.ToDropSQL(LdbEngine.MYSQL), 'DROP TABLE `users`')
 
 if __name__ == '__main__':
     unittest.main()

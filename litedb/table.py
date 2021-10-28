@@ -1,6 +1,20 @@
+# Copyright 2021 Pavel Rid aka S0ulw1sh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from .column import LdbCol
 from .types import LdbEngine
-from .expr import ILdbExprDrop
+from .expr import ILdbExprDrop, LdbExpr
 
 class LdbTable(ILdbExprDrop):
 
@@ -45,3 +59,35 @@ class LdbTable(ILdbExprDrop):
 
     def ToDropSQL(self, engine_type : LdbEngine):
         return 'DROP TABLE `%s`' % self.TABLE_NAME
+    
+    def ToAlterSQL(self, engine_type : LdbEngine):
+        items = []
+
+        for name in dir(self):
+            attr = getattr(self, name)
+            name = name.lower()
+            if not callable(attr) and not name.startswith('__'):
+                if type(attr) == LdbCol:
+                    items += attr.ToAlterSQL(engine_type, self.TABLE_NAME, name)
+                elif type(attr) == LdbExpr.Idx:
+                    items.append(attr.ToSQL(engine_type, self.TABLE_NAME, name))
+                elif type(attr) == LdbExpr.Tg:
+                    items.append(attr.ToSQL(engine_type, self.TABLE_NAME, name))
+
+        return items
+
+    def ToAlterDropSQL(self, engine_type : LdbEngine):
+        items = []
+
+        for name in dir(self):
+            attr = getattr(self, name)
+            name = name.lower()
+            if not callable(attr) and not name.startswith('__'):
+                if type(attr) == LdbCol:
+                    items += attr.ToAlterDropSQL(engine_type, self.TABLE_NAME, name)
+                elif type(attr) == LdbExpr.Idx:
+                    items.append(attr.ToDropSQL(engine_type, self.TABLE_NAME, name))
+                elif type(attr) == LdbExpr.Tg:
+                    items.append(attr.ToDropSQL(engine_type, self.TABLE_NAME, name))
+
+        return items

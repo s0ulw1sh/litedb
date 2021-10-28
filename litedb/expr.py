@@ -1,3 +1,17 @@
+# Copyright 2021 Pavel Rid aka S0ulw1sh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import abstractmethod, ABCMeta
 from .types import LdbEngine
 
@@ -37,6 +51,7 @@ class LdbExpr:
         NOW       = 4
         CRC       = 6
         UUID      = 7
+        SET       = 8
 
         def __init__(self, fnt : int, arg_a : ILdbExpr = None, arg_b : ILdbExpr = None):
             self.T = fnt
@@ -51,6 +66,7 @@ class LdbExpr:
                 LdbExpr.Fn.NOW      : lambda et, a, b : 'NOW()',
                 LdbExpr.Fn.CRC      : lambda et, a, b : 'CRC32(%s)' % a.ToSQL(et),
                 LdbExpr.Fn.UUID     : lambda et, a, b : 'UUID()',
+                LdbExpr.Fn.SET      : lambda et, a, b : 'SET %s = %s;' % (a.ToSQL(et), b.ToSQL(et)),
             }[self.T](engine_type, self.A, self.B)
 
         @classmethod
@@ -76,6 +92,10 @@ class LdbExpr:
         @classmethod
         def Uuid(cls) -> ILdbExpr:
             return LdbExpr.Fn(cls.UUID)
+
+        @classmethod
+        def Set(cls, expr_a : ILdbExpr, expr_b : ILdbExpr) -> ILdbExpr:
+            return LdbExpr.Fn(cls.SET, expr_a, expr_b)
 
     class Cnd(ILdbExpr):
 
@@ -180,12 +200,13 @@ class LdbExpr:
 
     class Val(ILdbExpr):
 
-        VAL  = 1
-        NAME = 2
-        FLD  = 3
-        SET  = 4
+        VAL   = 1
+        NAME  = 2
+        FLD   = 3
+        SET   = 4
+        NULL  = 5
 
-        def __init__(self, vtp : int, arg_a, arg_b = None):
+        def __init__(self, vtp : int, arg_a = None, arg_b = None):
             self.T = vtp
             self.A = arg_a
             self.B = arg_b
@@ -221,6 +242,9 @@ class LdbExpr:
                     items.append(str(i) if type(i) != Expr else i.ToSQL())
                 return '(' + ','.join(items) + ')'
 
+            elif self.T == LdbExpr.Val.NULL:
+                return 'NULL'
+
         @classmethod
         def Name(cls, name : str, size : int = 0) -> ILdbExpr:
             return LdbExpr.Val(cls.NAME, name, size)
@@ -244,6 +268,10 @@ class LdbExpr:
         @classmethod
         def Set(cls, *items) -> ILdbExpr:
             return LdbExpr.Val(cls.SET, items)
+
+        @classmethod
+        def Null(cls) -> ILdbExpr:
+            return LdbExpr.Val(cls.NULL)
 
     class Fk(ILdbExprOpt):
 
@@ -272,11 +300,11 @@ class LdbExpr:
         def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
             out = 'ALTER TABLE `{0}` ADD CONSTRAINT `fk_{0}_{1}` FOREIGN KEY (`{1}`) REFERENCES `{2}`(`{3}`)'.format(table, col, self.TABLE, self.COL)
 
-            if self.ONUPD is not None:
-                out += ' ON UPDATE %s' % self.ontosqlstr(self.ONUPD)
+            if self.UPD is not None:
+                out += ' ON UPDATE %s' % self.ontosqlstr(self.UPD)
             
-            if self.ONDEL is not None:
-                out += ' ON DELETE %s' % self.ontosqlstr(self.ONDEL)
+            if self.DEL is not None:
+                out += ' ON DELETE %s' % self.ontosqlstr(self.DEL)
 
             return out
 
@@ -298,7 +326,7 @@ class LdbExpr:
 
         def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
 
-            items = ['ALTER TABLE `{0}` ADD CONSTRAINT `ck_{0}_{1}` CHECK'.foramt(table, col)]
+            items = ['ALTER TABLE `{0}` ADD CONSTRAINT `ck_{0}_{1}` CHECK'.format(table, col)]
 
             if self.T == LdbExpr.Ck.GELE:
                 items.append('(`{0}` >= {1} AND `{0}` <= {2})'.format(col, self.A, self.B))
@@ -317,16 +345,22 @@ class LdbExpr:
             return 'ALTER TABLE `{0}` DROP CHECK ck_{0}_{1}'.format(table, col)
 
         @classmethod
+        def ValCheck(cls, val):
+            if type(val) == type:
+                return LdbExpr.Val.Val(val)
+            return val
+
+        @classmethod
         def GeLe(cls, min, max):
-            return Ck(cls.GELE, min, max)
+            return Ck(cls.GELE, cls.ValCheck(min), cls.ValCheck(max))
 
         @classmethod
         def Ne(cls, val):
-            return Ck(cls.NE, val)
+            return Ck(cls.NE, cls.ValCheck(val))
 
         @classmethod
         def GtLt(cls, min, max):
-            return Ck(cls.GTLT, min, max)
+            return Ck(cls.GTLT, cls.ValCheck(min), cls.ValCheck(max))
 
         @classmethod
         def Mail(cls):
@@ -348,23 +382,24 @@ class LdbExpr:
 
         def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
             items = []
-            
-            for a in self.A:
-                if type(a) == 'str':
-                    items.append(a)
-                else:
-                    items.append(a.ToSQL(engine_type))
+
+            if type(self.A) == tuple:
+                for a in self.A:
+                    if type(a) == str:
+                        items.append('`'+a+'`')
+                    else:
+                        items.append(a.ToSQL(engine_type))
 
             if self.T == LdbExpr.Idx.INDX:
-                idx = 'CREATE INDEX `id_{0}_{1}` ON `{0}` (`{2}`)'.format(table, col, '`,`'.join(items))
+                return 'CREATE INDEX `id_{0}_{1}` ON `{0}` ({2})'.format(table, col, ','.join(items))
             elif self.T == LdbExpr.Idx.UNIQ:
-                return 'CREATE UNIQUE INDEX `iq_{0}_{1}` ON `{0}` (`{2}`)'.format(table, col, '`,`'.join(items))
+                return 'CREATE UNIQUE INDEX `iq_{0}_{1}` ON `{0}` ({2})'.format(table, col, ','.join(items))
 
         def ToDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
             if self.T == LdbExpr.Idx.INDX:
-                return 'ALTER TABLE `{0}` DROP DROP INDEX id_{0}_{1}'.format(table, col)
+                return 'ALTER TABLE `{0}` DROP INDEX id_{0}_{1}'.format(table, col)
             elif self.T == LdbExpr.Idx.UNIQ:
-                return 'ALTER TABLE `{0}` DROP DROP INDEX iq_{0}_{1}'.format(table, col)
+                return 'ALTER TABLE `{0}` DROP INDEX iq_{0}_{1}'.format(table, col)
 
         @classmethod
         def Uniq(cls, *parm):
@@ -374,9 +409,50 @@ class LdbExpr:
         def Indx(cls, *parm):
             return LdbExpr.Idx(cls.INDX, parm)
 
+    class Tg(ILdbExprOpt):
+
+        BEFORE_INSERT = 1
+        BEFORE_UPDATE = 2
+        AFTER_INSERT  = 3
+        AFTER_UPDATE  = 4
+
+        @classmethod
+        def toSQLMode(cls, engine_type : LdbEngine, m):
+            return {
+                cls.BEFORE_INSERT : 'BEFORE INSERT',
+                cls.BEFORE_UPDATE : 'BEFORE UPDATE',
+                cls.AFTER_INSERT  : 'AFTER INSERT',
+                cls.AFTER_UPDATE  : 'AFTER UPDATE',
+            }[m]
+
+        def __init__(self, t, *parm):
+            self.T = t
+            self.A = []
+
+            for p in parm:
+                self.A.append(p)
+
+        def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
+            items = []
+
+            items.append('CREATE TRIGGER `tg_{0}_{1}` {2} ON `{0}` FOR EACH ROW BEGIN'.format(table, col, LdbExpr.Tg.toSQLMode(engine_type, self.T)))
+            for a in self.A:
+                items.append(a.ToSQL(engine_type))
+            items.append('END;')
+
+            return ' '.join(items)
+
+        def ToDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
+           return 'DROP TRIGGER `tg_{0}_{1}`'.format(table, col)
+
+        @classmethod
+        def If(cls, t, cnd : ILdbExpr, ifex : ILdbExpr, ifel : ILdbExpr = None):
+            return LdbExpr.Tg(t, LdbExpr.Cnd.If(cnd, ifex, ifel))
+
 class Val(LdbExpr.Val): pass
 class Fn(LdbExpr.Fn): pass
 class Cnd(LdbExpr.Cnd): pass
 class Idx(LdbExpr.Idx): pass
 class Ck(LdbExpr.Ck): pass
 class Fk(LdbExpr.Fk): pass
+class Tg(LdbExpr.Tg): pass

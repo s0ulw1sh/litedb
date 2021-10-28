@@ -1,3 +1,17 @@
+# Copyright 2021 Pavel Rid aka S0ulw1sh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from .types import LdbType, LdbAttr, LdbEngine
 from .expr import ILdbExpr, ILdbExprOpt
 
@@ -56,14 +70,36 @@ class LdbCol(ILdbExprOpt):
     def ToDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
         return 'ALTER TABLE `%s` DROP `%s`' % (table, col)
 
+    def ToAlterSQL(self, engine_type : LdbEngine, table : str, col : str) -> list:
+        items = []
+
+        if self.CK is not None:
+            items.append(self.CK.ToSQL(engine_type, table, col))
+
+        if self.FK is not None:
+            items.append(self.FK.ToSQL(engine_type, table, col))
+
+        return items
+
+    def ToAlterDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> list:
+        items = []
+
+        if self.CK is not None:
+            items.append(self.CK.ToDropSQL(engine_type, table, col))
+        
+        if self.FK is not None:
+            items.append(self.FK.ToDropSQL(engine_type, table, col))
+
+        return items
+
     @classmethod
     def DateTime(cls, sz:int=0, n:int=0, nn:bool=False, ai:bool=False, pk:bool=False, un:bool=True, ondef:ILdbExpr=None, onupd:ILdbExpr=None, ck:ILdbExpr=None, fk:ILdbExpr=None):
-        return Column(LdbType.DATETIME, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)
+        return LdbCol(LdbType.DATETIME, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)
 
     @classmethod
     def Time(cls, sz:int=0, n:int=0, nn:bool=False, ai:bool=False, pk:bool=False, un:bool=True, ondef:ILdbExpr=None, onupd:ILdbExpr=None, ck:ILdbExpr=None, fk:ILdbExpr=None):
-        return Column(LdbType.TIME, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)
+        return LdbCol(LdbType.TIME, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)
 
     @classmethod
     def Date(cls, sz:int=0, n:int=0, nn:bool=False, ai:bool=False, pk:bool=False, un:bool=True, ondef:ILdbExpr=None, onupd:ILdbExpr=None, ck:ILdbExpr=None, fk:ILdbExpr=None):
-        return Column(LdbType.DATE, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)
+        return LdbCol(LdbType.DATE, 0, 0, nn, False, pk, False, ondef, onupd, None, fk)

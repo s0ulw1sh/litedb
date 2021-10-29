@@ -52,22 +52,28 @@ class LdbExpr:
         CRC       = 6
         UUID      = 7
         SET       = 8
+        IF        = 9
+        IFNULL    = 10
+        NULLIF    = 11
 
-        def __init__(self, fnt : int, arg_a : ILdbExpr = None, arg_b : ILdbExpr = None):
+        def __init__(self, fnt : int, arg_a : ILdbExpr = None, arg_b : ILdbExpr = None, arg_c : ILdbExpr = None):
             self.T = fnt
             self.A = arg_a
             self.B = arg_b
+            self.C = arg_c
 
         def ToSQL(self, engine_type : LdbEngine) -> str:
-            return {
-                LdbExpr.Fn.PASSWORD : lambda et, a, b : 'PASSWORD(%s)' % a.ToSQL(et),
-                LdbExpr.Fn.MD5      : lambda et, a, b : 'MD5(%s)' % a.ToSQL(et),
-                LdbExpr.Fn.CONCAT   : lambda et, a, b : 'CONCAT(%s, %s)' % (a.ToSQL(et), b.ToSQL(et)),
-                LdbExpr.Fn.NOW      : lambda et, a, b : 'NOW()',
-                LdbExpr.Fn.CRC      : lambda et, a, b : 'CRC32(%s)' % a.ToSQL(et),
-                LdbExpr.Fn.UUID     : lambda et, a, b : 'UUID()',
-                LdbExpr.Fn.SET      : lambda et, a, b : 'SET %s = %s;' % (a.ToSQL(et), b.ToSQL(et)),
-            }[self.T](engine_type, self.A, self.B)
+
+            if self.T == LdbExpr.Fn.PASSWORD: return 'PASSWORD(%s)' % self.A.ToSQL(engine_type)
+            if self.T == LdbExpr.Fn.MD5:      return 'MD5(%s)' % self.A.ToSQL(engine_type)
+            if self.T == LdbExpr.Fn.CONCAT:   return 'CONCAT(%s, %s)' % (self.A.ToSQL(engine_type), self.B.ToSQL(engine_type))
+            if self.T == LdbExpr.Fn.NOW:      return 'NOW()'
+            if self.T == LdbExpr.Fn.UUID:     return 'UUID()'
+            if self.T == LdbExpr.Fn.CRC:      return 'CRC32(%s)' % self.A.ToSQL(engine_type)
+            if self.T == LdbExpr.Fn.SET:      return 'SET %s = %s;' % (self.A.ToSQL(engine_type), self.B.ToSQL(engine_type))
+            if self.T == LdbExpr.Fn.IF:       return 'IF(%s, %s, %s)' % (self.A.ToSQL(engine_type), self.B.ToSQL(engine_type), self.C.ToSQL(engine_type))            
+            if self.T == LdbExpr.Fn.IFNULL:   return 'IFNULL(%s, %s)' % (self.A.ToSQL(engine_type), self.B.ToSQL(engine_type))            
+            if self.T == LdbExpr.Fn.NULLIF:   return 'NULLIF(%s, %s)' % (self.A.ToSQL(engine_type), self.B.ToSQL(engine_type))            
 
         @classmethod
         def Pwd(cls, expr : ILdbExpr) -> ILdbExpr:
@@ -96,6 +102,18 @@ class LdbExpr:
         @classmethod
         def Set(cls, expr_a : ILdbExpr, expr_b : ILdbExpr) -> ILdbExpr:
             return LdbExpr.Fn(cls.SET, expr_a, expr_b)
+
+        @classmethod
+        def If(cls, expr_a : ILdbExpr, expr_b : ILdbExpr, expr_c : ILdbExpr) -> ILdbExpr:
+            return LdbExpr.Fn(cls.IF, expr_a, expr_b, expr_c)
+
+        @classmethod
+        def IfNull(cls, expr_a : ILdbExpr, expr_b : ILdbExpr) -> ILdbExpr:
+            return LdbExpr.Fn(cls.IFNULL, expr_a, expr_b)
+
+        @classmethod
+        def NullIf(cls, expr_a : ILdbExpr, expr_b : ILdbExpr) -> ILdbExpr:
+            return LdbExpr.Fn(cls.NULLIF, expr_a, expr_b)
 
     class Cnd(ILdbExpr):
 
@@ -342,7 +360,7 @@ class LdbExpr:
             return ' '.join(items)
 
         def ToDropSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
-            return 'ALTER TABLE `{0}` DROP CHECK ck_{0}_{1}'.format(table, col)
+            return 'ALTER TABLE `{0}` DROP CONSTRAINT ck_{0}_{1}'.format(table, col)
 
         @classmethod
         def ValCheck(cls, val):
@@ -435,10 +453,9 @@ class LdbExpr:
         def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
             items = []
 
-            items.append('CREATE TRIGGER `tg_{0}_{1}` {2} ON `{0}` FOR EACH ROW BEGIN'.format(table, col, LdbExpr.Tg.toSQLMode(engine_type, self.T)))
+            items.append('CREATE TRIGGER `tg_{0}_{1}` {2} ON `{0}` FOR EACH ROW'.format(table, col, LdbExpr.Tg.toSQLMode(engine_type, self.T)))
             for a in self.A:
                 items.append(a.ToSQL(engine_type))
-            items.append('END;')
 
             return ' '.join(items)
 
@@ -446,8 +463,20 @@ class LdbExpr:
            return 'DROP TRIGGER `tg_{0}_{1}`'.format(table, col)
 
         @classmethod
-        def If(cls, t, cnd : ILdbExpr, ifex : ILdbExpr, ifel : ILdbExpr = None):
-            return LdbExpr.Tg(t, LdbExpr.Cnd.If(cnd, ifex, ifel))
+        def BeforeInsert(cls, *parm):
+            return LdbExpr.Tg(cls.BEFORE_INSERT, *parm)
+
+        @classmethod
+        def BeforeUpdate(cls, *parm):
+            return LdbExpr.Tg(cls.BEFORE_UPDATE, *parm)
+
+        @classmethod
+        def AfterInsert(cls, *parm):
+            return LdbExpr.Tg(cls.AFTER_INSERT, *parm)
+
+        @classmethod
+        def AfterUpdate(cls, *parm):
+            return LdbExpr.Tg(cls.AFTER_UPDATE, *parm)
 
 class Val(LdbExpr.Val): pass
 class Fn(LdbExpr.Fn): pass

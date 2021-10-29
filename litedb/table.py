@@ -18,17 +18,23 @@ from .expr import ILdbExprDrop, LdbExpr
 
 class LdbTable(ILdbExprDrop):
 
-    def __init__(self):
-        self.TABLE_NAME   = ''
-        self.TABLE_ENGINE = ''
+    def __init__(self, name : str = '', engine : str = '', charset : str = 'utf8mb4', collate : str = 'utf8mb4_unicode_ci'):
+        self.TABLE_NAME   = name
+        self.TABLE_ENGINE = engine
+        self.CHAR_SET     = charset
+        self.COLLATE      = collate
 
-        for name in dir(self):
+        for name in self.__dir__():
             attr = getattr(self, name)
             if not callable(attr) and name.startswith('__'):
                 if name == '__table_name__' and type(attr) == str:
                     self.TABLE_NAME = attr
                 if name == '__engine__' and type(attr) == str:
                     self.TABLE_ENGINE = attr
+                if name == '__charset__' and type(attr) == str:
+                    self.CHAR_SET = attr
+                if name == '__collate__' and type(attr) == str:
+                    self.COLLATE = attr
 
         if len(self.TABLE_NAME) == 0:
             name = self.__class__.__name__.lower()
@@ -41,7 +47,7 @@ class LdbTable(ILdbExprDrop):
         fks   = []
         cks   = []
 
-        for name in dir(self):
+        for name in self.__dir__():
             attr = getattr(self, name)
             name = name.lower()
             if not callable(attr) and not name.startswith('__'):
@@ -53,7 +59,9 @@ class LdbTable(ILdbExprDrop):
         if self.TABLE_ENGINE != '':
             engine = ' ENGINE = ' + self.TABLE_ENGINE
 
-        out = 'CREATE TABLE `%s` (%s)%s' % (self.TABLE_NAME, ','.join(items), engine)
+        charsets = 'DEFAULT CHARSET=%s COLLATE=%s' % (self.CHAR_SET, self.COLLATE)
+
+        out = 'CREATE TABLE `%s` (%s)%s %s' % (self.TABLE_NAME, ','.join(items), engine, charsets)
 
         return out.strip()
 
@@ -63,7 +71,7 @@ class LdbTable(ILdbExprDrop):
     def ToAlterSQL(self, engine_type : LdbEngine):
         items = []
 
-        for name in dir(self):
+        for name in self.__dir__():
             attr = getattr(self, name)
             name = name.lower()
             if not callable(attr) and not name.startswith('__'):
@@ -79,7 +87,7 @@ class LdbTable(ILdbExprDrop):
     def ToAlterDropSQL(self, engine_type : LdbEngine):
         items = []
 
-        for name in dir(self):
+        for name in self.__dir__():
             attr = getattr(self, name)
             name = name.lower()
             if not callable(attr) and not name.startswith('__'):

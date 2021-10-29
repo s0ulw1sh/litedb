@@ -38,20 +38,21 @@ class LdbType(Enum):
     SET      = 10
     JSON     = 11
 
-    def ToSQL(self, engine_type : LdbEngine):
+    @classmethod
+    def ToSQL(cls, engine_type : LdbEngine, t):
         return {
-            LdbType.STRING  : 'VARCHAR',
-            LdbType.TEXT    : 'TEXT',
-            LdbType.INT     : 'INT',
-            LdbType.FLOAT   : 'FLOAT',
-            LdbType.DECIMAL : 'DECIMAL',
-            LdbType.BLOB    : 'BLOB',
-            LdbType.DATETIME: 'DATETIME',
-            LdbType.DATE    : 'DATE',
-            LdbType.TIME    : 'TIME',
-            LdbType.SET     : 'SET',
-            LdbType.JSON    : 'JSON',
-        }[self]
+            cls.STRING  : 'VARCHAR',
+            cls.TEXT    : 'TEXT',
+            cls.INT     : 'INT',
+            cls.FLOAT   : 'FLOAT',
+            cls.DECIMAL : 'DECIMAL',
+            cls.BLOB    : 'BLOB',
+            cls.DATETIME: 'DATETIME',
+            cls.DATE    : 'DATE',
+            cls.TIME    : 'TIME',
+            cls.SET     : 'SET',
+            cls.JSON    : 'JSON',
+        }[t]
 
     @classmethod
     def FromType(cls, t):
@@ -65,7 +66,7 @@ class LdbType(Enum):
             if t == bytes:   return LdbType.BLOB
             if t == set:     return LdbType.SET
         else:
-            if t in LdbType.__members__:
+            if t in LdbType.__members__.values():
                 return t
 
         return LdbType.NONE

@@ -27,11 +27,11 @@ class LdbCol(ILdbExprOpt):
         self.FK    = fk
         self.ATTR  = LdbAttr.DEFAULT
 
-        if type(t) == bool:
+        if type(t) == type and t == bool:
             self.SIZE  = 1
             self.PTNUM = 0
             
-            if not un:
+            if un == False:
                 self.ATTR |= LdbAttr.UNSIGN
 
         if nn: self.ATTR |= LdbAttr.NOTNULL
@@ -40,8 +40,8 @@ class LdbCol(ILdbExprOpt):
         if un: self.ATTR |= LdbAttr.UNSIGN
 
     def ToSQL(self, engine_type : LdbEngine, table : str, col : str) -> str:
-
-        typesz = self.TYPE.ToSQL(engine_type)
+        
+        typesz = LdbType.ToSQL(engine_type, self.TYPE)
 
         if self.SIZE > 0:
             if self.PTNUM <= 0:

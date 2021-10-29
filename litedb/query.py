@@ -67,16 +67,20 @@ class LdbQuery:
 
     class Select(ILdbExpr):
 
-        tables : None
+        tables : list
         conds  : list
 
-        def __init__(self, *tables):
-            self.tables = LdbQuery.FromType(*tables)
+        def __init__(self, name : str, ids : str):
+            self.tables.append(LdbQuery.Table(name, ids))
 
-        def fields(self, ind:str, flds:list):
+        def Select(self, name : str, ids : str):
+            self.tables.append(LdbQuery.Table(name, ids))
+            return self
+
+        def fields(self, ind : str, flds : list):
             self.tables.appendFields(ind, flds)
 
-        def condition(self, a, b : None, op : str = '='):
+        def where(self, a, b : None, op : str = '='):
             if b is not None:
                 conds.append(Cnd.If(Cnd.Cnd(op,
                                     Val.Fld(a),
@@ -88,5 +92,8 @@ class LdbQuery:
             pass
 
     @classmethod
-    def Select(cls, *tables):
-        return cls.Select(*tables)
+    def Select(cls, table : str, ids : str):
+        return cls.Select(table, ids)
+
+
+LdbQuery.Select('users', 'u').Select('roles', 'r') .fields('u', ['mail', 'pass']).where('pass', '123')

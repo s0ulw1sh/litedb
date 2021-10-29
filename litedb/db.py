@@ -18,8 +18,11 @@ from abc import abstractmethod, ABCMeta
 
 from .expr  import ILdbExpr
 from .table import LdbTable
-from .types import LdbType
+from .types import LdbEngine
 from .query import LdbQuery
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 class LDb(metaclass=ABCMeta):
 
@@ -49,43 +52,52 @@ class LDbMySQL(LDb):
                 }
 
         self.NAME    = ''.join(random.choice(string.ascii_uppercase) for _ in range(6))
-        self.POOL    = pooling.MySQLConnectionPool(self.NAME, 5, True, **cfg)
+        self.POOL    = pooling.MySQLConnectionPool(pool_name=self.NAME, pool_size=5, pool_reset_session=True, **cfg)
 
     def CreateTable(self, table : LdbTable):
         conn = self.POOL.get_connection()
         curs = conn.cursor()
 
-        sql  = table.ToSQL(LdbType.MYSQL)
-
-        cursor.execute(sql)
+        try:
+            curs.execute(table.ToSQL(LdbEngine.MYSQL))
+        except BaseException as err:
+            return err
 
         for i in table.ToAlterSQL(LdbEngine.MYSQL):
-            cursor.execute(i)
+            try:
+                curs.execute(i)
+            except BaseException as err:
+                return err
 
-        conn.close()
+        return None
 
     def DropTable(self, table : LdbTable):
         conn = self.POOL.get_connection()
         curs = conn.cursor()
 
-        sql  = table.ToDropSQL(LdbType.MYSQL)
-
-        cursor.execute(sql)
-
         for i in table.ToAlterDropSQL(LdbEngine.MYSQL):
-            cursor.execute(i)
+            try:
+                curs.execute(i)
+            except BaseException as err:
+                return err
 
-        conn.close()
+        try:
+            curs.execute(table.ToDropSQL(LdbEngine.MYSQL))
+        except BaseException as err:
+            return err
+
+        return None
 
     def Execute(self, q : ILdbExpr):
         conn = self.POOL.get_connection()
         curs = conn.cursor()
 
-        sql  = q.ToSQL(LdbType.MYSQL)
+        try:
+            curs.execute(q.ToSQL(LdbEngine.MYSQL))
+        except BaseException as err:
+            return err
 
-        cursor.execute(sql)
-
-        conn.close()
+        return None
 
 def create_engine(dsn : str = '', user : str = 'root', password : str = '', host : str = '127.0.0.1', port : int = 3306, database : str = '', pool_size : int = 3):
     if len(dsn) == 0:
@@ -94,6 +106,10 @@ def create_engine(dsn : str = '', user : str = 'root', password : str = '', host
     dbn = urlsplit(dsn.strip())
     
     if dbn.scheme.lower() == 'mysql':
-        return LDbMySQL(dbn.hostname.lower(), dbn.port, dbn.path.strip('/'), dbn.username, dbn.password)
+        port = dbn.port
+        user = dbn.username
+        if dbn.port is None or dbn.port == 0: port     = 3306
+        if len(dbn.username) == 0:            user = 'root'
+        return LDbMySQL(dbn.hostname.lower(), port, dbn.path.strip('/'), user, dbn.password)
 
     return None
